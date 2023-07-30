@@ -1,22 +1,22 @@
-# DreamChess
+# AnarchyChess - Dreamy Desktop - A fork from DreamChess to include Knooks and other AnarchyChess rules.
 
 [![Build status](https://github.com/dreamchess/dreamchess/actions/workflows/ci.yml/badge.svg)](https://github.com/dreamchess/dreamchess/actions/workflows/ci.yml)
 
 ## About
 
-DreamChess is an open source chess game. It comes with its own
+AnarchyChess is aDreamChess is an open source chess game. It comes with its own
 engine called Dreamer.
 
 Both DreamChess and Dreamer are compatible with the
 xboard/Winboard chess engine communication protocol. This means that
-DreamChess can be used with other xboard-compatible chess engines such as
-[crafty](http://www.craftychess.com/) and [GNU Chess](https://www.gnu.org/software/chess/).
-Similarly, the Dreamer chess engine can
-be used with other xboard-compatible user interfaces such as [XBoard/WinBoard](https://www.gnu.org/software/xboard/).
 
-DreamChess currently supports Windows, macOS and Linux. It is licensed under the [GPLv3](https://www.gnu.org/licenses/gpl.html).
+AnarchyChess is intended for Human vs Human play. 
+
+AnarchyChess doesnt make major changes to the UI and should have the same compatibility as DreamChess which currently supports Windows, macOS and Linux. It is licensed under the [GPLv3](https://www.gnu.org/licenses/gpl.html).
 
 ## Building
+
+AnarchyChess should have the same dependencies as Dreamchess. 
 
 The following dependencies are required for building DreamChess: [CMake](https://cmake.org/), [bison](https://www.gnu.org/software/bison/), [flex](https://github.com/westes/flex), [gettext](https://www.gnu.org/software/gettext/), [SDL 2.0](https://www.libsdl.org/), [SDL_image 2.0](https://www.libsdl.org/projects/SDL_image/), [SDL_mixer 2.0](https://www.libsdl.org/projects/SDL_mixer/), [Expat](https://libexpat.github.io/), [GLEW](https://glew.sourceforge.net/) and [FreeType](https://freetype.org/).
 
