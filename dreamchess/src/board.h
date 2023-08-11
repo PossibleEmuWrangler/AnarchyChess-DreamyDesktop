@@ -41,7 +41,10 @@
 #define KING 10
 #define WHITE_KING 10
 #define BLACK_KING 11
-#define NONE 12
+#define KNOOK 12
+#define WHITE_KNOOK 12
+#define BLACK_KNOOK 13
+#define NONE 14
 
 #define CHAR_KING 16
 #define CHAR_QUEEN 17
@@ -49,13 +52,8 @@
 #define CHAR_KNIGHT 19
 #define CHAR_BISHOP 20
 #define CHAR_PAWN 21
+#define CHAR_KNOOK 22
 
-#define UTF8_KING "♚"
-#define UTF8_QUEEN "♛"
-#define UTF8_ROOK "♜"
-#define UTF8_KNIGHT "♞"
-#define UTF8_BISHOP "♝"
-#define UTF8_PAWN "♟"
 
 #define IS_WHITE(P) (!((P)&1))
 #define IS_BLACK(P) ((P)&1)
@@ -89,7 +87,7 @@
 typedef struct board {
 	int turn;
 	int square[64];
-	int captured[10];
+	int captured[14];
 	int state;
 } board_t;
 
