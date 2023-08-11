@@ -19,7 +19,6 @@
 */
 
 #include "ui_sdlgl.h"
-#include "i18n.h"
 
 static int dialog_promote_cb(gg_widget_t *widget, gg_widget_t *emitter, void *data, void *extra_data) {
 	set_dialog_promote_piece(*(int *)extra_data);
@@ -28,7 +27,7 @@ static int dialog_promote_cb(gg_widget_t *widget, gg_widget_t *emitter, void *da
 }
 
 gg_dialog_t *dialog_promote_create(int colour) {
-	static int cb_pieces[4];
+	static int cb_pieces[5];
 
 	texture_t *pieces;
 	gg_widget_t *dialog;
@@ -36,13 +35,14 @@ gg_dialog_t *dialog_promote_create(int colour) {
 	gg_widget_t *vbox = gg_vbox_create(0);
 	gg_widget_t *hbox = gg_hbox_create(0);
 	gg_widget_t *gg_image;
-	gg_widget_t *text = gg_label_create(_("Promotion! Choose new piece!"));
+	gg_widget_t *text = gg_label_create("Promotion! Choose new piece! Rightmost is Knook");
 
 	set_dialog_promote_piece(NONE);
 	cb_pieces[0] = QUEEN + colour;
 	cb_pieces[1] = ROOK + colour;
 	cb_pieces[2] = BISHOP + colour;
 	cb_pieces[3] = KNIGHT + colour;
+	cb_pieces[4] = KNOOK + colour;
 
 	gg_container_append(GG_CONTAINER(vbox), text);
 
@@ -70,7 +70,15 @@ gg_dialog_t *dialog_promote_create(int colour) {
 	action = gg_action_create(gg_image);
 	gg_widget_subscribe_signal_name(action, action->id, "action_pressed", dialog_promote_cb, &cb_pieces[3]);
 	gg_container_append(GG_CONTAINER(hbox), action);
-	gg_container_append(GG_CONTAINER(vbox), hbox);
+
+    
+    /* ACTODO: This is for the knook, but use knight image for now */
+	gg_image = gg_image_create(&pieces[GUI_PIECE_KNIGHT]);
+	action = gg_action_create(gg_image);
+	gg_widget_subscribe_signal_name(action, action->id, "action_pressed", dialog_promote_cb, &cb_pieces[4]);
+	gg_container_append(GG_CONTAINER(hbox), action);
+    
+    gg_container_append(GG_CONTAINER(vbox), hbox);
 
 	dialog = gg_dialog_create(vbox, NULL, NULL, 0);
 	gg_dialog_set_modal(GG_DIALOG(dialog), 1);
