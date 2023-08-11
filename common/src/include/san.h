@@ -27,6 +27,7 @@
 #define SAN_ROOK 3
 #define SAN_QUEEN 4
 #define SAN_KING 5
+#define SAN_KNOOK 6
 
 #define SAN_NORMAL 0
 #define SAN_CAPTURE 1
