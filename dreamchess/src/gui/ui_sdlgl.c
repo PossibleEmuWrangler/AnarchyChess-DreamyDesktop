@@ -32,8 +32,6 @@
 #include "options.h"
 #include "system_config.h"
 #include "theme.h"
-#include "i18n.h"
-#include "unicode.h"
 #include <GL/glew.h>
 #include <SDL2/SDL_syswm.h>
 
@@ -120,16 +118,6 @@ board_t *get_board(void) {
 	return &board;
 }
 
-void set_is_coordinates(int coordinates) {
-	option_t* option_coordinates = config_get_option("coordinates");
-	option_coordinates->selected->index = coordinates;
-}
-
-int get_is_coordinates(void) {
-	option_t* option_coordinates = config_get_option("coordinates");
-	return option_coordinates->selected->index;
-}
-
 config_t config;
 
 config_t *get_config(void) {
@@ -177,23 +165,6 @@ static void reset_turn_counter(void) {
 	turn_counter_start = SDL_GetTicks();
 }
 
-void handle_system_events(SDL_Event *event) {
-	if (event->type == SDL_QUIT)
-		/* FIXME */
-		exit(0);
-
-	if (event->type == SDL_WINDOWEVENT) {
-		switch(event->window.event) {
-		case SDL_WINDOWEVENT_MINIMIZED:
-			set_is_minimized(true);
-			break;
-		case SDL_WINDOWEVENT_RESTORED:
-			set_is_minimized(false);
-			break;
-		}
-	}
-}
-
 static int poll_event(gg_event_t *event) {
 	gg_event_t gg_event;
 	SDL_Event sdl_event;
@@ -202,7 +173,9 @@ static int poll_event(gg_event_t *event) {
 
 	while (SDL_PollEvent(&sdl_event)) {
 
-		handle_system_events(&sdl_event);
+		if (sdl_event.type == SDL_QUIT)
+			/* FIXME */
+			exit(0);
 
 		if ((sdl_event.type == SDL_KEYDOWN && sdl_event.key.keysym.mod & KMOD_ALT &&
 			 sdl_event.key.keysym.sym == SDLK_RETURN) ||
@@ -320,11 +293,11 @@ static config_t *do_menu(int *pgn) {
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	engine_error_shown = 0;
 	set_loading = FALSE;
-	//draw_credits(1);
+	draw_credits(1);
 	open_title_root_dialog();
 	if (mode_set_failed) {
 		gg_dialog_open(
-			dialog_error_create(gg_dialog_get_active(), _("Error: failed to set video mode; using defaults"), NULL));
+			dialog_error_create(gg_dialog_get_active(), "Error: failed to set video mode; using defaults", NULL));
 		mode_set_failed = 0;
 	}
 
@@ -348,9 +321,11 @@ static config_t *do_menu(int *pgn) {
 		glDisable(GL_DEPTH_TEST);
 		draw_texture_fullscreen(&menu_title_tex, 1.0f);
 		glEnable(GL_BLEND);
-		unicode_render_atlas();
 		glEnable(GL_DEPTH_TEST);
-		unicode_string_render(g_version, get_gl_width() - 20, 20, 1.0f, 0.75f, 0, (gg_colour_t){1.0f, 1.0f, 1.0f, 1.0f});
+		text_draw_string_right(get_gl_width() - 20, 20, g_version, 0.75f, get_col(COL_WHITE));
+
+		/*if (get_show_egg())
+			text_draw_string(560, 440, "Egg!", 1, get_col(COL_WHITE));*/
 
 		switch (menu_state) {
 		case MENU_STATE_FADE_IN:
@@ -360,7 +335,7 @@ static config_t *do_menu(int *pgn) {
 
 			if (!draw_fade(FADE_IN)) {
 				menu_state = MENU_STATE_IN_MENU;
-				//draw_credits(1);
+				draw_credits(1);
 			}
 			break;
 
@@ -376,13 +351,13 @@ static config_t *do_menu(int *pgn) {
 				return NULL;
 
 			if (set_loading) {
-				gg_widget_t *widget = gg_label_create(_("Loading, please wait…"));
+				gg_widget_t *widget = gg_label_create("Loading, please wait...");
 				widget = gg_dialog_create(widget, NULL, NULL, 0);
 				gg_dialog_set_style(GG_DIALOG(widget), get_menu_style());
 				gg_dialog_open(GG_DIALOG(widget));
 				menu_state = MENU_STATE_LOAD;
-			} //else
-				//draw_credits(0);
+			} else
+				draw_credits(0);
 
 			gg_dialog_render_all();
 			break;
@@ -390,8 +365,6 @@ static config_t *do_menu(int *pgn) {
 		case MENU_STATE_LOAD: {
 			option_t *option = config_get_option("theme");
 			struct theme_struct *theme = option->selected->data;
-			option_t *option_coordinates = config_get_option("coordinates");
-			set_is_coordinates(option_coordinates->selected->index);
 
 			load_theme(theme);
 			reset_transition(TRUE);
@@ -441,12 +414,15 @@ static void free_menu_tex(void) {
 	glDeleteTextures(1, &menu_title_tex.id);
 	glDeleteTextures(1, &get_menu_mouse_cursor()->id);
 	glDeleteTextures(1, &get_menu_border()->id);
+	glDeleteTextures(1, &get_text_character(0)->id);
 }
 
 static void load_menu_tex(void) {
 	ch_datadir();
 	/* For the menu.. */
 	load_texture_png(&menu_title_tex, "menu_title.png", 0, 1);
+	/* New text stuff. */
+	generate_text_chars();
 
 	chdir("styles");
 	chdir("default");
@@ -462,8 +438,6 @@ static int set_fullscreen(int fullscreen) {
 
 	return 0;
 }
-
-static const float font_size = 16.0f;
 
 static int resize(int width, int height, int fullscreen, int ms) {
 	DBG_LOG("Resizing video mode to %ix%i; fullscreen %s; %ix multisampling", width, height, fullscreen ? "on" : "off",
@@ -496,13 +470,6 @@ static int resize(int width, int height, int fullscreen, int ms) {
 	screen_ms = ms;
 	resize_window(screen_width, screen_height);
 
-	resize_colourpicking_fbo(screen_width, screen_height);
-
-	if (unicode_resize(font_size * get_screen_height() / get_gl_height())) {
-		DBG_ERROR("Failed to resize font system");
-		exit(1);
-	}
-
 	return 0;
 }
 
@@ -525,11 +492,6 @@ static int create_window(int width, int height, int fullscreen, int ms) {
 
 	SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
 	SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 1);
-
-	// Check for and enable the flag needed to stop SDL from disabling linux compositor
-	#ifdef SDL_HINT_VIDEO_X11_NET_WM_BYPASS_COMPOSITOR
-	SDL_SetHint(SDL_HINT_VIDEO_X11_NET_WM_BYPASS_COMPOSITOR, "0");
-	#endif
 
 	sdl_window =
 		SDL_CreateWindow("DreamChess", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, width, height, video_flags);
@@ -565,6 +527,8 @@ static int create_window(int width, int height, int fullscreen, int ms) {
 	}
 
 	glGetIntegerv(GL_MAX_SAMPLES, &max_samples);
+	init_fbo();
+
 	if (ms > max_samples) {
 		SDL_DestroyWindow(sdl_window);
 		mode_set_failed = 1;
@@ -572,15 +536,8 @@ static int create_window(int width, int height, int fullscreen, int ms) {
 	}
 
 	init_screen_fbo(width, height, ms);
+
 	init_gl();
-	resize_window(width, height);
-	init_colourpicking_fbo(width, height);
-
-	if (unicode_init(font_size * height / get_gl_height())) {
-		DBG_ERROR("Failed to initialize font system");
-		exit(1);
-	}
-
 	load_menu_tex();
 
 	SDL_ShowCursor(SDL_DISABLE);
@@ -605,6 +562,9 @@ static int create_window(int width, int height, int fullscreen, int ms) {
 
 	ch_datadir();
 	audio_init();
+
+	/* Make virtual keyboard table? */
+	populate_key_table();
 
 	update_fps_time();
 
@@ -668,9 +628,7 @@ static int sdlgl_exit(void) {
 
 	gg_system_exit();
 	free_menu_tex();
-	deinit_colourpicking_fbo();
-
-	unicode_exit();
+	deinit_fbo();
 
 	SDL_Quit();
 	return 0;
@@ -712,9 +670,11 @@ static void poll_move(void) {
 	input = get_move();
 	/* FIXME */
 	if (!engine_error_shown && game_get_engine_error()) {
-		gg_dialog_open(dialog_engine_error_create());
-		engine_error_shown = 1;
-		return;
+        
+	/*	gg_dialog_open(dialog_engine_error_create()); ACTODO: AnarchyChess Dreamy Desktop Doesnt Support Engines Yet
+
+        engine_error_shown = 1;
+		return; */
 	}
 
 	if (!game_want_move()) {
@@ -747,7 +707,7 @@ static void poll_move(void) {
 
 	if (needprom == 1) {
 		if (dialog_promote_piece != NONE)
-			needprom = 2;
+			needprom = 2; 
 		return;
 	}
 

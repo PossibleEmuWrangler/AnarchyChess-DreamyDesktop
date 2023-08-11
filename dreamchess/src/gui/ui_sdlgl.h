@@ -28,7 +28,6 @@
 #include <string.h>
 #include <sys/types.h>
 #include <time.h>
-#include <stdbool.h>
 
 #include "SDL.h"
 #include "SDL_image.h"
@@ -52,9 +51,9 @@
 #include "ui_sdlgl_3d.h"
 #include <gamegui.h>
 
-#define GAME_TYPE_HUMAN_VS_CPU 0
-#define GAME_TYPE_CPU_VS_HUMAN 1
-#define GAME_TYPE_HUMAN_VS_HUMAN 2
+#define GAME_TYPE_HUMAN_VS_HUMAN 0
+#define GAME_TYPE_HUMAN_VS_CPU 1
+#define GAME_TYPE_CPU_VS_HUMAN 2
 
 #define LEFT (1 << 0)
 #define RIGHT (1 << 1)
@@ -98,6 +97,7 @@
 #define GUI_PIECE_QUEEN 4
 #define GUI_PIECE_KING 5
 #define GUI_PIECE_AVATAR 6
+#define GUI_PIECE_KNOOK 7
 
 /** Describes a texture. The OpenGL texture ID is paired with texture
  *  coordinates to allow for only a small portion of the image to be used.
@@ -180,7 +180,6 @@ void unload_border(texture_t border[9]);
 int get_move(void);
 
 /* ui_sdlgl.c */
-void handle_system_events(SDL_Event *event);
 int get_fading_out(void);
 void set_fading_out(int fade);
 void blit_fbo(void);
@@ -228,8 +227,6 @@ int get_white_in_checkmate(void);
 int get_game_stalemate(void);
 void set_switch_to_menu(int sw);
 board_t *get_board(void);
-void set_is_coordinates(int);
-int get_is_coordinates(void);
 int get_fading_out(void);
 config_t *get_config(void);
 void set_pgn_slot(int slot);
@@ -238,6 +235,12 @@ void set_set_loading(int set);
 void set_title_process_retval(int ret);
 void set_dialog_promote_piece(int piece);
 int get_dialog_promote_piece(void);
+
+/* vkeyboard.c*/
+gg_dialog_t *dialog_vkeyboard_create(void);
+void toggle_vkeyboard_enabled(void);
+int get_vkeyboard_enabled(void);
+void populate_key_table(void);
 
 /* system.c */
 void go_3d(int width, int height);
@@ -256,7 +259,6 @@ void update_fps_time(void);
 int power_of_two(int input);
 float get_gl_width();
 float get_gl_height();
-void set_is_minimized(bool minimized);
 
 /* texture.c */
 texture_t SDL_GL_LoadTexture(SDL_Surface *surface, SDL_Rect *area, int alpha, int clamp);
@@ -272,6 +274,16 @@ void draw_rect_fill_gradient(int x, int y, int w, int h, gg_colour_t *top_left, 
 							 gg_colour_t *bottom_left, gg_colour_t *bottom_right);
 void draw_rect_fill(int x, int y, int w, int h, gg_colour_t *col);
 void draw_tri(int x1, int y1, int x2, int y2, int x3, int y3, gg_colour_t *col);
+
+/* text.c */
+int text_draw_char(float xpos, float ypos, float scale, int character, gg_colour_t *col);
+void text_draw_string(float xpos, float ypos, const char *text, float scale, gg_colour_t *col);
+void text_draw_string_right(float xpos, float ypos, const char *text, float scale, gg_colour_t *col);
+void text_draw_string_bouncy(float xpos, float ypos, const char *text, float scale, gg_colour_t *col);
+texture_t *get_text_character(int index);
+void generate_text_chars(void);
+int text_width(const char *text);
+int text_height(void);
 
 /* colours.c */
 #define COL_BLACK 0

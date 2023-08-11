@@ -133,9 +133,8 @@ static inline float in_product(float x, float y, float z, float xx, float yy, fl
 	return x * xx + y * yy + z * zz;
 }
 
-static model_t model[13];
+static model_t model[15];
 static model_t board;
-static model_t coordinates;
 
 static int is_2d;
 
@@ -157,22 +156,21 @@ static float piece_moving_dest_ypos;
 static float piece_moving_xpos;
 static float piece_moving_ypos;
 
-void init_colourpicking_fbo(int width, int height) {
+void init_fbo(void) {
+	const int width = 1920;
+	const int height = 1080;
+
 	glGenTextures(1, &colourpicking_tex);
-	glGenFramebuffers(1, &fb);
-	glGenRenderbuffers(1, &depth_rb);
-
-	resize_colourpicking_fbo(width, height);
-}
-
-void resize_colourpicking_fbo(int width, int height) {
 	glBindTexture(GL_TEXTURE_2D, colourpicking_tex);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_BGRA, GL_UNSIGNED_BYTE, NULL);
 
+	glGenFramebuffers(1, &fb);
 	glBindFramebuffer(GL_FRAMEBUFFER, fb);
 	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, colourpicking_tex, 0);
+
+	glGenRenderbuffers(1, &depth_rb);
 	glBindRenderbuffer(GL_RENDERBUFFER, depth_rb);
 	glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, width, height);
 	glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, depth_rb);
@@ -185,7 +183,7 @@ void resize_colourpicking_fbo(int width, int height) {
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
-void deinit_colourpicking_fbo(void) {
+void deinit_fbo(void) {
 	glDeleteTextures(1, &colourpicking_tex);
 	glDeleteRenderbuffers(1, &depth_rb);
 	glDeleteFramebuffers(1, &fb);
@@ -613,7 +611,7 @@ void loadmodels(char *filename) {
 		exit(-1);
 	}
 
-	for (i = 0; i < 12; i++) {
+	for (i = 0; i < 14; i++) {
 		if (!fgets(mesh, 256, f) || (mesh[strlen(mesh) - 1] != '\n') || !fgets(texture, 256, f) ||
 			(texture[strlen(texture) - 1] != '\n')) {
 			DBG_ERROR("Error reading set file\n");
@@ -643,10 +641,7 @@ void loadmodels(char *filename) {
 void load_board(char *dcm_name, char *texture_name) {
 	board.mesh = load_mesh(dcm_name);
 	board.texture = load_piece_texture(texture_name);
-	coordinates.mesh = load_mesh(dcm_name);
-	coordinates.texture = load_piece_texture("coords.png");
 	model_make_list(&board);
-	model_make_list(&coordinates);
 }
 
 static void free_mesh(void *data) {
@@ -677,7 +672,7 @@ void freemodels(void) {
 }
 
 /* How many squares per second? */
-#define PIECE_MOVE_SPEED 8.0
+#define PIECE_MOVE_SPEED 3.0
 
 /* Draw a selected piece after the rest.. */
 static int selected_piece_render;
@@ -809,11 +804,6 @@ static void draw_pieces_cp(board_t *board) {
 static void draw_board(int blend) {
 	setup_view();
 	model_render(&board, 0, 1.0f);
-}
-
-static void draw_coordinates(int blend) {
-	setup_view();
-	model_render(&coordinates, 0, 1.0f);
 }
 
 static void draw_selector(float alpha) {
@@ -991,8 +981,6 @@ void render_scene_3d(board_t *board, GLuint target_fb, int reflections) {
 		glCullFace(GL_BACK);
 		draw_board_center(1.0f, 1.0f, 1.0f, 0.8f);
 		draw_board(0);
-		if(get_is_coordinates())
-			draw_coordinates(0);
 		draw_pieces(board, 0);
 
 	} else {
@@ -1000,8 +988,6 @@ void render_scene_3d(board_t *board, GLuint target_fb, int reflections) {
 		glTranslatef(5.0f, 5.0, 5.0f);
 		draw_board_center(0.75f, 0.75f, 0.75f, 1.0f);
 		draw_board(0);
-		if(get_is_coordinates())
-			draw_coordinates(0);
 		draw_pieces(board, 0);
 		glPopMatrix();
 	}

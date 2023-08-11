@@ -20,7 +20,6 @@
 
 #include "ui_sdlgl.h"
 #include "xml.h"
-#include "i18n.h"
 
 static int slots;
 static char time_save[SAVEGAME_SLOTS][80];
@@ -56,7 +55,7 @@ int write_save_xml(int slot) {
 	snprintf(temp, sizeof(temp), "save%i.xml", slot);
 
 	if (ch_userdir()) {
-		DBG_WARN("Could not enter user directory");
+		printf("Could not enter user directory");
 		return -1;
 	}
 
@@ -87,7 +86,7 @@ int write_save_xml(int slot) {
 	fprintf(fp, "<level>%i</level>\n", get_config()->cpu_level);
 	fprintf(fp, "<difficulty>%i</difficulty>\n", get_config()->difficulty);
 
-	fen = fen_encode(game_get_board());
+	fen = fen_encode(get_board());
 	if (!fen) {
 		DBG_ERROR("Error encoding FEN");
 		retval = -1;
@@ -117,8 +116,8 @@ static void save_cb(void *user_data, const char *element, char *const *attrs, co
 
 		time = atoi(text);
 		tm = localtime(&time);
-		snprintf(time_save[slot], sizeof(time_save[slot]), "%04d-%02d-%02d %02d:%02d",
-			tm->tm_year + 1900, tm->tm_mon + 1, tm->tm_mday, tm->tm_hour, tm->tm_min);
+		snprintf(time_save[slot], sizeof(time_save[slot]), "%02i/%02i at %02i:%02i.", tm->tm_mday, tm->tm_mon + 1,
+				 tm->tm_hour, tm->tm_min);
 	} else if (!strcmp(element, "white")) {
 		if (!strcmp(text, "ui"))
 			config_save[slot].player[WHITE] = PLAYER_UI;
@@ -146,7 +145,7 @@ void load_saves_xml(void) {
 	int slot;
 
 	for (slot = 0; slot < SAVEGAME_SLOTS; ++slot) {
-		snprintf(time_save[slot], sizeof(time_save[slot]), _("Unknown"));
+		snprintf(time_save[slot], sizeof(time_save[slot]), "Unknown");
 		config_save[slot].player[WHITE] = PLAYER_UI;
 		config_save[slot].player[BLACK] = PLAYER_ENGINE;
 		config_save[slot].cpu_level = 1;
@@ -155,7 +154,7 @@ void load_saves_xml(void) {
 	}
 
 	if (ch_userdir()) {
-		DBG_WARN("Could not enter user directory");
+		printf("Could not enter user directory");
 		return;
 	}
 
