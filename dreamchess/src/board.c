@@ -81,8 +81,10 @@ static void square_to_str(char *buf, int square) {
 }
 
 char *move_to_fullalg(board_t *board, move_t *move) {
-	char *s = (char *)malloc(6);
-	char prom[4] = "nbrq";
+    /*printf("ACTrace: move_to_fillalg\n");*/
+
+    char *s = (char *)malloc(6);
+	char prom[5] = "nbrqo";
 
 	square_to_str(s, move->source);
 	square_to_str(s + 2, move->destination);
@@ -91,6 +93,8 @@ char *move_to_fullalg(board_t *board, move_t *move) {
 
 	if ((PIECE(board->square[move->source]) == PAWN) && ((move->destination < 8) || (move->destination >= 56)))
 		s[4] = prom[(move->promotion_piece - 2) / 2];
+    
+    printf("%s\n",s);
 	return s;
 }
 
@@ -108,6 +112,8 @@ static int san_piece(int piece) {
 		return SAN_KNIGHT;
 	case PAWN:
 		return SAN_PAWN;
+    case KNOOK:
+        return SAN_KNOOK;
 	}
 
 	DBG_ERROR("Failed to convert user interface piece to SAN piece");
@@ -115,7 +121,12 @@ static int san_piece(int piece) {
 }
 
 int make_move(board_t *board, move_t *move) {
-	/* Assume that move is valid. */
+   /* printf("\nACTrace: make_move\n");
+    printf("Move: Source%i Dest%i Piece%i Type%i State%i \n",move->source, move->destination, move->promotion_piece, move->type, move->state); */
+    /* Assume that move is valid. */
+    
+    if (PIECE(board->square[move->source]) == KNOOK){
+    }
 
 	if ((PIECE(board->square[move->source]) == PAWN) && ((PIECE(board->square[move->destination]) == NONE)) &&
 		((move->source % 8) != (move->destination % 8))) {
@@ -207,8 +218,15 @@ static int square_attacked(board_t *b, int square, int side) {
 }
 
 /* Checks whether a move is valid, except for whether this puts own king in check. */
+/* Return 0 on invalid.*/ 
 static int move_is_semi_valid(board_t *board, move_t *move) {
-	/* Bounds check. */
+//    printf("ACTrace:move_is_semi_valid ");
+
+  int KnookMoveAsRookValid=1; /*Assumed valid until proven otherwise */
+  int KnookMoveAsKnightValid =1; /*Assumed valid until proven otherwise */
+
+    
+    /* Bounds check. */
 	if ((move->source > 63) || (move->source < 0))
 		return 0;
 
@@ -234,6 +252,7 @@ static int move_is_semi_valid(board_t *board, move_t *move) {
 		case ROOK:
 		case BISHOP:
 		case QUEEN:
+ 		case KNOOK:
 			break;
 		default:
 			return 0;
@@ -246,6 +265,50 @@ static int move_is_semi_valid(board_t *board, move_t *move) {
 		return 0;
 
 	switch (PIECE(board->square[move->source])) {
+
+
+    case KNOOK: 
+/*
+        if ((HOR != 1) && (HOR != 2))
+			KnookMoveAsKnightValid = 0;
+		if ((HOR == 1) && (VERT != 2))
+			KnookMoveAsKnightValid = 0;
+		if ((HOR == 2) && (VERT != 1))
+			KnookMoveAsKnightValid = 0;
+		if (COLOUR(board->square[move->destination]) == COLOUR(board->square[move->source]))
+			KnookMoveAsKnightValid = 0;
+		if ((HOR != 0) && (VERT != 0))
+			KnookMoveAsRookValid = 0;
+		if (!ray_ok(board, move))
+			KnookMoveAsRookValid = 0;
+        if ((HOR <=2) && (VERT <=2) && (COLOUR(board->square[move->destination]) != COLOUR(board->square[move->source])))
+			return 1;
+        if ((KnookMoveAsKnightValid == 0) && (KnookMoveAsRookValid == 0))
+            return 0;
+*/
+        /*Check for invalid rook moves but not return instantly*/
+		if ((HOR != 0) && (VERT != 0))
+			KnookMoveAsRookValid = 0;
+		if (!ray_ok(board, move))
+			KnookMoveAsRookValid = 0;
+
+        if (KnookMoveAsRookValid) /* Knook can legally do move as rook, skip further checks */
+            break;
+
+        /* Check for invalid knight moves but not return instantly*/
+		if ((HOR != 1) && (HOR != 2))
+			return 0;
+		if ((HOR == 1) && (VERT != 2))
+			return 0;
+		if ((HOR == 2) && (VERT != 1))
+			return 0;
+		if (board->square[move->destination] == NONE)  /* Copied from knight logic,I dont understand why setting to 1 exactly, but going with it */
+			break;
+		if (COLOUR(board->square[move->destination]) == COLOUR(board->square[move->source]))
+			return 0;
+
+        
+        break; 
 	case KNIGHT:
 		if ((HOR != 1) && (HOR != 2))
 			return 0;
@@ -356,11 +419,14 @@ static int move_is_semi_valid(board_t *board, move_t *move) {
 				return 0;
 		}
 	}
+   // printf(" yes\n ");
 	return 1;
 }
 
 static int in_check(board_t *board, int turn) {
-	int i;
+    /*printf("ACTrace: in_check\n");*/
+
+    int i;
 	for (i = 0; i < 64; i++)
 		if (board->square[i] == KING + turn)
 			break;
@@ -374,6 +440,8 @@ static int in_check(board_t *board, int turn) {
 }
 
 int move_is_valid(board_t *b, move_t *move) {
+//    printf("ACTrace: move_is_valid\n");
+    
 	board_t board = *b;
 
 	if (!move_is_semi_valid(&board, move))
@@ -385,7 +453,9 @@ int move_is_valid(board_t *b, move_t *move) {
 }
 
 static int is_mated(board_t *board, int side) {
-	int src, dest;
+    /*printf("ACTrace: is_mated\n"); */
+
+    int src, dest;
 	move_t move;
 
 	for (src = 0; src < 64; src++)
@@ -404,7 +474,9 @@ static int is_mated(board_t *board, int side) {
 }
 
 void move_set_attr(board_t *b, move_t *move) {
-	int check, mated;
+    /*printf("ACTrace: move_set_attr\n"); */
+
+    int check, mated;
 	board_t board = *b;
 
 	if (move_is_capture(b, move))
@@ -437,7 +509,9 @@ void move_set_attr(board_t *b, move_t *move) {
 }
 
 move_t *fullalg_to_move(board_t *board, char *move_s) {
-	move_t *move;
+    printf("ACTrace: fullalg_to_move %s\n", move_s);
+
+    move_t *move;
 
 	if ((strlen(move_s) < 4) || (strlen(move_s) > 5))
 		return NULL;
@@ -469,6 +543,9 @@ move_t *fullalg_to_move(board_t *board, char *move_s) {
 			break;
 		case 'q':
 			move->promotion_piece = QUEEN;
+            break;
+        case 'o':
+            move->promotion_piece = KNOOK;
 		}
 		move->promotion_piece += board->turn;
 	} else
@@ -498,6 +575,8 @@ static int ui_piece(int san_piece) {
 		return QUEEN;
 	case SAN_KING:
 		return KING;
+	case SAN_KNOOK:
+		return KNOOK;
 	case SAN_NOT_SPECIFIED:
 		return NONE;
 	}
@@ -507,7 +586,9 @@ static int ui_piece(int san_piece) {
 }
 
 static move_t *find_unique_move(board_t *board, san_move_t *san_move) {
-	int square;
+    /*printf("ACTrace: find_unique_move\n"); */
+
+    int square;
 	int piece;
 	int found = 0;
 	move_t move, *retval;
@@ -569,17 +650,19 @@ static move_t *find_unique_move(board_t *board, san_move_t *san_move) {
 }
 
 char *move_to_san(board_t *board, move_t *move) {
-	san_move_t san_move;
+    /*printf("ACTrace: move_to_san");*/
+
+    san_move_t san_move;
 
 	switch (move->state) {
 	case MOVE_CHECK:
-		san_move.state = SAN_STATE_CHECK;
+		san_move.state = SAN_STATE_CHECK; printf("Check");
 		break;
 	case MOVE_CHECKMATE:
-		san_move.state = SAN_STATE_CHECKMATE;
+		san_move.state = SAN_STATE_CHECKMATE;  printf("Checkmate");
 		break;
 	default:
-		san_move.state = SAN_STATE_NORMAL;
+		san_move.state = SAN_STATE_NORMAL;  printf("Normal");
 	}
 
 	switch (move->type) {
@@ -626,6 +709,8 @@ char *move_to_san(board_t *board, move_t *move) {
 						char *move_s = move_to_fullalg(board, move);
 
 						DBG_ERROR("Failed to convert move %s to SAN notation", move_s);
+						printf("Failed to convert move %s to SAN notation", move_s);
+                        
 
 						free(move_s);
 						return NULL;
@@ -642,7 +727,9 @@ char *move_to_san(board_t *board, move_t *move) {
 }
 
 move_t *san_to_move(board_t *board, char *move_s) {
-	san_move_t *san_move = san_parse(move_s);
+    /*printf("ACTrace: san_to_move\n"); */
+
+    san_move_t *san_move = san_parse(move_s);
 
 	if (!san_move) {
 		DBG_LOG("Failed to parse SAN move string '%s'", move_s);
@@ -654,27 +741,28 @@ move_t *san_to_move(board_t *board, char *move_s) {
 	return move;
 }
 
-static char *make_fan_string(const char *san, const char *utf8) {
-	char *fan = malloc(strlen(san) + strlen(utf8));
-	strcpy(fan, utf8);
-	if (san[0] != '\0')
-		strcat(fan, san + 1);
-	return fan;
-}
-
 char *san_to_fan(board_t *board, char *move_s) {
-	switch (move_s[0]) {
+	char *move = strdup(move_s);
+
+	switch (move[0]) {
 	case 'K':
-		return make_fan_string(move_s, UTF8_KING);
+		move[0] = CHAR_KING;
+		break;
 	case 'Q':
-		return make_fan_string(move_s, UTF8_QUEEN);
+		move[0] = CHAR_QUEEN;
+		break;
 	case 'R':
-		return make_fan_string(move_s, UTF8_ROOK);
+		move[0] = CHAR_ROOK;
+		break;
 	case 'N':
-		return make_fan_string(move_s, UTF8_KNIGHT);
+		move[0] = CHAR_KNIGHT;
+		break;
 	case 'B':
-		return make_fan_string(move_s, UTF8_BISHOP);
+		move[0] = CHAR_BISHOP;
+        break;
+	case 'O':
+		move[0] = CHAR_KNOOK;
 	}
 
-	return strdup(move_s);
+	return move;
 }
