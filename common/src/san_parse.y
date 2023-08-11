@@ -66,6 +66,7 @@ piece   : 'Q'                     { san_move.piece = SAN_QUEEN; }
         | 'B'                     { san_move.piece = SAN_BISHOP; }
         | 'N'                     { san_move.piece = SAN_KNIGHT; }
         | 'K'                     { san_move.piece = SAN_KING; }
+        | 'O'                     { san_move.piece = SAN_KNOOK; }
 ;
 
 op_capt :
@@ -97,6 +98,7 @@ promo   : 'Q'                     { san_move.promotion_piece = SAN_QUEEN; }
         | 'R'                     { san_move.promotion_piece = SAN_ROOK; }
         | 'B'                     { san_move.promotion_piece = SAN_BISHOP; }
         | 'N'                     { san_move.promotion_piece = SAN_KNIGHT; }
+        | 'O'                     { san_move.promotion_piece = SAN_KNOOK; }
 ;
 %%
 
@@ -149,6 +151,9 @@ static void add_piece(char *s, int piece)
         break;
     case SAN_KING:
         *s = 'K';
+        break;
+    case SAN_KNOOK:
+        *s = 'O';
     }
 }
 
