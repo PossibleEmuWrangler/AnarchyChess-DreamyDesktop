@@ -19,7 +19,6 @@
 */
 
 #include "ui_sdlgl.h"
-#include "i18n.h"
 
 static int dialog_close_cb(gg_widget_t *widget, gg_widget_t *emitter, void *data, void *extra_data) {
 	gg_dialog_close();
@@ -30,24 +29,26 @@ int saveload_selected = 0;
 int changing_slot = FALSE;
 int change_saving = FALSE;
 
-static const char *xmlsquaretofont(int square) {
+static char xmlsquaretofont(int square) {
 
 	switch (PIECE(square)) {
 	case KING:
-		return UTF8_KING;
+		return CHAR_KING;
 	case QUEEN:
-		return UTF8_QUEEN;
+		return CHAR_QUEEN;
 	case ROOK:
-		return UTF8_ROOK;
+		return CHAR_ROOK;
 	case KNIGHT:
-		return UTF8_KNIGHT;
+		return CHAR_KNIGHT;
 	case BISHOP:
-		return UTF8_BISHOP;
+		return CHAR_BISHOP;
 	case PAWN:
-		return UTF8_PAWN;
+		return CHAR_PAWN;
+	case KNOOK:
+		return CHAR_KNOOK;
 	}
 
-	return "";
+	return ' ';
 }
 
 static int dialog_loadgame_load(gg_widget_t *widget, gg_widget_t *emitter, void *data, void *extra_data) {
@@ -79,9 +80,9 @@ static int dialog_savegame_save(gg_widget_t *widget, gg_widget_t *emitter, void 
 	gg_dialog_close();
 
 	if (!game_save(saveload_selected) && !write_save_xml(saveload_selected))
-		show_message_dialog(_("Save successful"));
+		show_message_dialog("Save successful");
 	else
-		show_message_dialog(_("Save failed"));
+		show_message_dialog("Save failed");
 
 	return 1;
 }
@@ -108,21 +109,19 @@ gg_dialog_t *dialog_saveload_create(gg_dialog_t *parent, int saving) {
 		load_saves_xml();
 	}
 
-	gg_set_requested_size(vbox, 250, 0);
-
 	if (get_slots() & (1 << saveload_selected)) {
 		gg_widget_t *board_box = gg_vbox_create(0);
 
-		snprintf(temp, sizeof(temp), _("Saved: %s"), get_time_save(saveload_selected));
+		snprintf(temp, sizeof(temp), "Saved: %s", get_time_save(saveload_selected));
 		widget = gg_label_create(temp);
 		gg_container_append(GG_CONTAINER(vbox), widget);
 
 		switch (get_config_save(saveload_selected)->player[WHITE]) {
 		case PLAYER_ENGINE:
-			whiteis = _("CPU");
+			whiteis = "CPU";
 			break;
 		case PLAYER_UI:
-			whiteis = _("Human");
+			whiteis = "Human";
 			break;
 		default:
 			/* Whoops */
@@ -132,10 +131,10 @@ gg_dialog_t *dialog_saveload_create(gg_dialog_t *parent, int saving) {
 
 		switch (get_config_save(saveload_selected)->player[BLACK]) {
 		case PLAYER_ENGINE:
-			blackis = _("CPU");
+			blackis = "CPU";
 			break;
 		case PLAYER_UI:
-			blackis = _("Human");
+			blackis = "Human";
 			break;
 		default:
 			/* Whoops */
@@ -143,16 +142,16 @@ gg_dialog_t *dialog_saveload_create(gg_dialog_t *parent, int saving) {
 			break;
 		}
 
-		snprintf(temp, sizeof(temp), _("%s vs %s"), whiteis, blackis);
+		snprintf(temp, sizeof(temp), "%s vs %s", whiteis, blackis);
 		widget = gg_label_create(temp);
 		gg_container_append(GG_CONTAINER(vbox), widget);
 
-		snprintf(temp, sizeof(temp), _("Difficulty: %s"),
-				 get_config_save(saveload_selected)->difficulty ? _("Normal") : _("Easy"));
+		snprintf(temp, sizeof(temp), "Difficulty: %s",
+				 get_config_save(saveload_selected)->difficulty ? "Normal" : "Easy");
 		widget = gg_label_create(temp);
 		gg_container_append(GG_CONTAINER(vbox), widget);
 
-		snprintf(temp, sizeof(temp), _("Level: %i"), get_config_save(saveload_selected)->cpu_level);
+		snprintf(temp, sizeof(temp), "Level: %i", get_config_save(saveload_selected)->cpu_level);
 		widget = gg_label_create(temp);
 		gg_container_append(GG_CONTAINER(vbox), widget);
 
@@ -170,6 +169,7 @@ gg_dialog_t *dialog_saveload_create(gg_dialog_t *parent, int saving) {
 				};*/
 			hboxtemp = gg_hbox_create(0);
 			hboxtemp2 = gg_hbox_create(0);
+			gg_set_requested_size(hboxtemp2, 20, 20);
 			gg_container_append(GG_CONTAINER(hboxtemp), hboxtemp2);
 
 			for (j = 0; j < 8; j++) {
@@ -177,8 +177,10 @@ gg_dialog_t *dialog_saveload_create(gg_dialog_t *parent, int saving) {
 				gg_colour_t col_yellow = {0.8, 0.7, 0.4, 1.0};
 				gg_colour_t front, *back;
 				int square = get_saved_board(saveload_selected)->square[i * 8 + j];
-				widget = gg_label_create(xmlsquaretofont(square));
-				gg_set_requested_size(widget, 23, 23);
+
+				snprintf(temp, sizeof(temp), "%c", xmlsquaretofont(square));
+				widget = gg_label_create(temp);
+				gg_set_requested_size(widget, 20, 20);
 				gg_align_set_alignment(GG_ALIGN(widget), 0.5, 0.5);
 
 				if (COLOUR(square) == WHITE)
@@ -197,20 +199,11 @@ gg_dialog_t *dialog_saveload_create(gg_dialog_t *parent, int saving) {
 				gg_label_set_colour(GG_LABEL(widget), &front, back);
 				gg_container_append(GG_CONTAINER(hboxtemp), widget);
 			}
-
-			// Center the board manually
-			int width_total, width_board;
-			gg_vbox_get_requested_size(vbox, &width_total, NULL);
-			gg_hbox_get_requested_size(hboxtemp, &width_board, NULL);
-
-			if (width_total > width_board)
-				gg_set_requested_size(hboxtemp2, (width_total - width_board) / 2, 0);
-
 			gg_container_append(GG_CONTAINER(board_box), hboxtemp);
 		}
 		gg_container_append(GG_CONTAINER(vbox), board_box);
 	} else {
-		snprintf(temp, sizeof(temp), _("Empty slot"));
+		snprintf(temp, sizeof(temp), "Empty slot");
 		widget = gg_label_create(temp);
 		gg_container_append(GG_CONTAINER(vbox), widget);
 
@@ -219,6 +212,7 @@ gg_dialog_t *dialog_saveload_create(gg_dialog_t *parent, int saving) {
 			gg_container_append(GG_CONTAINER(vbox), widget);
 		}
 	}
+	gg_set_requested_size(vbox, 201, 0);
 	gg_container_append(GG_CONTAINER(hbox), gg_frame_create(vbox));
 
 	/* left side */
@@ -231,7 +225,7 @@ gg_dialog_t *dialog_saveload_create(gg_dialog_t *parent, int saving) {
 
 	widget = gg_option_create();
 	for (i = 0; i < SAVEGAME_SLOTS; i++) {
-		snprintf(temp, sizeof(temp), _("Save slot: %i"), i + 1);
+		snprintf(temp, sizeof(temp), "Save slot: %i", i + 1);
 		gg_option_append_label(GG_OPTION(widget), temp, 0.5f, 0.0f);
 	}
 	gg_widget_subscribe_signal_name(widget, widget->id, "option_changed", dialog_saveload_change, widget);
@@ -241,15 +235,15 @@ gg_dialog_t *dialog_saveload_create(gg_dialog_t *parent, int saving) {
 		gg_option_set_selected(GG_OPTION(widget), saveload_selected);
 
 	if (saving) {
-		widget = gg_action_create_with_label(_("Save Game"), 0.5f, 0.0f);
+		widget = gg_action_create_with_label("Save Game", 0.5f, 0.0f);
 		gg_widget_subscribe_signal_name(widget, widget->id, "action_pressed", dialog_savegame_save, vbox);
 	} else {
-		widget = gg_action_create_with_label(_("Load Game"), 0.5f, 0.0f);
+		widget = gg_action_create_with_label("Load Game", 0.5f, 0.0f);
 		gg_widget_subscribe_signal_name(widget, widget->id, "action_pressed", dialog_loadgame_load, vbox);
 	}
 	gg_container_append(GG_CONTAINER(vbox), widget);
 
-	widget = gg_action_create_with_label(_("Cancel"), 0.5f, 0.0f);
+	widget = gg_action_create_with_label("Cancel", 0.5f, 0.0f);
 	gg_widget_subscribe_signal_name(widget, widget->id, "action_pressed", dialog_close_cb, NULL);
 	gg_container_append(GG_CONTAINER(vbox), widget);
 
