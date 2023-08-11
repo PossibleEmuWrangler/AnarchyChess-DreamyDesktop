@@ -44,16 +44,15 @@
 #include "pgn_scanner.h"
 #include "system_config.h"
 #include "ui.h"
-#include "i18n.h"
 
 #ifdef __APPLE__
 #include "CoreFoundation/CoreFoundation.h"
 #endif
 
 #ifdef HAVE_GETOPT_LONG
-#define OPTION_TEXT(L, S) "  " L "\t  " S "\t%s\n"
+#define OPTION_TEXT(L, S, T) "  " L "\t  " S "\t" T "\n"
 #else
-#define OPTION_TEXT(L, S) "  " S "\t%s\n"
+#define OPTION_TEXT(L, S, T) "  " S "\t" T "\n"
 #endif
 
 typedef struct move_list {
@@ -113,10 +112,6 @@ static void move_list_view_next(move_list_t *list) {
 static void move_list_view_prev(move_list_t *list) {
 	if (list->view >= 0)
 		list->view--;
-}
-
-board_t *game_get_board(void) {
-	return history->last->board;
 }
 
 void game_view_next(void) {
@@ -196,11 +191,16 @@ int game_get_engine_error(void) {
 }
 
 static int do_move(move_t *move, int ui_update) {
+    
 	char *move_s, *move_f, *move_san;
 	board_t new_board;
 
+/*  printf("ACTrace:do_move");*/
+    printf("Move: Source%i Dest%i Piece%i Type%i State%i \n",move->source, move->destination, move->promotion_piece, move->type, move->state);
+
 	if (!move_is_valid(history->last->board, move)) {
 		DBG_WARN("Move is illegal");
+        printf("Move is illegal");
 		return 0;
 	}
 
@@ -210,9 +210,11 @@ static int do_move(move_t *move, int ui_update) {
 	move_list_play(&fullalg_list, move_s);
 
 	move_san = move_to_san(&new_board, move);
+    printf("San %s\n",move_san);
 	move_f = san_to_fan(&new_board, move_san);
 
 	DBG_LOG("Processing move %s (%s)", move_s, move_san);
+	printf("Processing move : %s (%s)", move_s, move_san); /*Keep in for now to aid debugging */
 
 	move_list_play(&san_list, move_san);
 	move_list_play(&fan_list, move_f);
@@ -262,11 +264,17 @@ static int do_move(move_t *move, int ui_update) {
 }
 
 void game_make_move(move_t *move, int ui_update) {
-	if (do_move(move, ui_update)) {
+    
+/*   printf("\n\n\n\n\nACTrace: game_make_move----------------------\n");   
+     printf("Move: Source%i Dest%i Piece%i Type%i State%i \n",move->source, move->destination, move->promotion_piece, move->type, move->state);
+*/   
+     if (do_move(move, ui_update)) {
 		comm_send("%s\n", fullalg_list.move[fullalg_list.entries - 1]);
+        printf("CommSend %s\n", fullalg_list.move[fullalg_list.entries - 1]);
 	} else {
 		char *move_str = move_to_fullalg(history->last->board, move);
 		DBG_WARN("Ignoring illegal move %s", move_str);
+		printf("Ignoring illegal move %s", move_str);
 		free(move_str);
 	}
 }
@@ -316,6 +324,7 @@ void game_make_move_str(char *move_str, int ui_update) {
 	move_t *engine_move;
 
 	DBG_LOG("Parsing move string '%s'", move_str);
+	printf("Parsing move string '%s'", move_str);
 
 	engine_move = san_to_move(&new_board, move_str);
 
@@ -399,7 +408,7 @@ static void parse_options(int argc, char **argv, ui_driver_t **ui_driver, cl_opt
 	 * case we skip parsing the command line options.
 	 */ 
 	if (argc > 1 && strncmp(argv[1], "-psn_", 5) == 0) {
-		DBG_WARN("Received '%s'; ignoring all command line arguments", argv[1]);
+		printf("Received '%s'; ignoring all command line arguments", argv[1]);
 		return;
 	}
 
@@ -410,15 +419,15 @@ static void parse_options(int argc, char **argv, ui_driver_t **ui_driver, cl_opt
 #endif /* HAVE_GETOPT_LONG */
 		switch (c) {
 		case 'h':
-			printf(_("Usage: dreamchess [options]\n\n"
-			         "An xboard-compatible chess interface.\n\n"
-			         "Options:\n"));
-			printf(OPTION_TEXT("--help\t", "-h\t"), _("show help"));
-			printf(OPTION_TEXT("--fullscreen\t", "-f\t"), _("run fullscreen"));
-			printf(OPTION_TEXT("--width\t", "-W<num>"), _("set screen width"));
-   			printf(OPTION_TEXT("--height\t", "-H<num>"), _("set screen height"));
-   			printf(OPTION_TEXT("--1st-engine <eng>", "-1<eng>"), _("use <eng> as first chess engine"));
-			printf(OPTION_TEXT("\t\t", "\t"), _("  defaults to 'dreamer'"));
+			printf("Usage: dreamchess [options]\n\n"
+				   "An xboard-compatible chess interface.\n\n"
+				   "Options:\n"
+                   OPTION_TEXT("--help\t", "-h\t", "show help")
+				   OPTION_TEXT("--fullscreen\t", "-f\t", "run fullscreen")
+				   OPTION_TEXT("--width\t", "-W<num>", "set screen width")
+				   OPTION_TEXT("--height\t", "-H<num>", "set screen height")
+				   OPTION_TEXT("--1st-engine <eng>", "-1<eng>", "use <eng> as first chess engine")
+				   OPTION_TEXT("\t\t", "\t", "  defaults to 'dreamer'"));
 			exit(0);
 		case '1':
 			cl_options->engine = optarg;
@@ -467,18 +476,13 @@ int main(int argc, char **argv) {
 	cl_options_t cl_options = {0};
 
 	dbg_init();
-	init_i18n();
 	DBG_LOG("Version %s", g_version);
 
 	ui = &ui_sdlgl;
 
-	printf("DreamChess %s\n", g_version);
+	printf("AnarchyChess DreamyDesktop v0.8.7 - Based off Dreamchess %s Development\n", g_version);
 
 	parse_options(argc, argv, &ui, &cl_options);
-
-	// Switch to UTF-8 for the GUI
-	bind_textdomain_codeset("dreamchess", "UTF-8");
-
 	config_init();
 	set_cl_options(&cl_options);
 
@@ -506,7 +510,7 @@ int main(int argc, char **argv) {
 		char temp1[200];
 		char temp2[200];
 
-		if (!strcmp(option->string, "dreamer")) {
+		if (!strcmp(option->string, "dreamer") || !strcmp(option->string, "Dreamer")) {
 			CFBundleRef mainBundle = CFBundleGetMainBundle();
 
 			CFURLRef bundledir = CFBundleCopyBundleURL(mainBundle);
@@ -528,15 +532,9 @@ int main(int argc, char **argv) {
 		comm_send("random\n");
 
 		comm_send("sd %i\n", config->cpu_level);
+		comm_send("depth %i\n", config->cpu_level);
 
-		// If we appear to be talking to gnuchess, send the "depth" command,
-		// since "sd" is not supported.
-		if (strstr(option->string, "gnuchess"))
-			comm_send("depth %i\n", config->cpu_level);
-
-		// On easy mode, send the "noquiesce" command to dreamer. This does not
-		// work on other engines.
-		if (!strcmp(option->string, "dreamer") && config->difficulty == 0)
+		if (config->difficulty == 0)
 			comm_send("noquiesce\n");
 
 		if (config->player[WHITE] == PLAYER_UI && config->player[BLACK] == PLAYER_UI)
